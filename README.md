@@ -1,12 +1,15 @@
-##To run:
+## To run: (tested on Python 3.6.3)
 
-`pip3 install -r requirements`
+(Optional)
+`python -m venv ./.venv; source ./.venv/Scripts/activate`
+
+install requirements:
+
+`pip3 install -r requirements.text`
 
 run 
 
 `alembic upgrade head`
-
-(it is possible that before this the application needs to be started. I don't know at what point DB is created)
 
 to run application:
 
