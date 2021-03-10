@@ -3,15 +3,13 @@ import binascii
 
 from starlette.applications import Starlette
 from starlette.authentication import (AuthCredentials, AuthenticationBackend,
-                                      AuthenticationError, SimpleUser,
-                                      UnauthenticatedUser)
+                                      AuthenticationError, SimpleUser)
 from starlette.endpoints import HTTPEndpoint
 from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.routing import Route
 from starlette.templating import Jinja2Templates
-from starlette.responses import RedirectResponse
-from sqlalchemy import select
+from starlette.responses import RedirectResponse, PlainTextResponse
 
 from db import users
 from db import database
@@ -30,9 +28,10 @@ class SignIn(HTTPEndpoint):
         user = await database.fetch_one(query)
         if not user:
             return templates.TemplateResponse("user_not_found.html", {"request": request})
-
         else:
-            return RedirectResponse(url="dashboard")
+            # TODO: Here should be some actual logging evaluated on the user probably, but I don't
+            #   know how to do this.
+            return RedirectResponse(url="dashboard", headers={"Authorization": "true"})
 
 
 class SignUp(HTTPEndpoint):
@@ -56,35 +55,50 @@ class SignUp(HTTPEndpoint):
                                                                     "message": "Email Exists"})
 
 
-class Dashboard(HTTPEndpoint):
-    async def post(self, request):
-        if request.user.is_authenticated:
-            return templates.TemplateResponse(
-                "dashboard.html",
-                {"request": request, "user": request.user}
-            )
-        else:
-            return templates.TemplateResponse(
-                "dashboard.html",
-                {"request": request},
-                status_code=403
-            )
+async def dashboard(request):
+    if request.user.is_authenticated:
+        return templates.TemplateResponse(
+            "dashboard.html",
+            {"request": request, "user": request.user}
+        )
+    else:
+        return templates.TemplateResponse(
+            "dashboard.html",
+            {"request": request},
+            status_code=403
+        )
+
+
+async def logout(request):
+    # TODO: Actually log out the user
+    return PlainTextResponse("You have been logged out")
 
 
 class BasicAuthBackend(AuthenticationBackend):
     async def authenticate(self, request):
+        # To be fixed somehow, for now don't know how to do this.
         if "Authorization" not in request.headers:
             return
 
-        creds = request.auth
-        query = users.select().where(users.c.username == creds["login"])
+        auth = request.headers["Authorization"]
+        try:
+            scheme, credentials = auth.split()
+            if scheme.lower() != 'basic':
+                return
+            decoded = base64.b64decode(credentials).decode("ascii")
+        except (ValueError, UnicodeDecodeError, binascii.Error) as exc:
+            raise AuthenticationError('Invalid basic auth credentials')
+
+        username, _, password = decoded.partition(":")
+        query = users.select().where(users.c.username == username)
         user = await database.fetch_one(query)
 
-        if user:
-            if form["login"] == user.username and creds["password"] == user.password:
-                return AuthCredentials(["authenticated"]), SimpleUser(user.username)
+        if not user:
+            raise AuthenticationError("User does not exist")
+        elif user.password != password:
+            raise AuthenticationError("Invalid password")
 
-        return
+        return AuthCredentials(["authenticated"]), SimpleUser(username)
 
 
 app = Starlette(
@@ -92,7 +106,8 @@ app = Starlette(
     routes=[
         Route("/", SignIn, name="signin"),
         Route("/signup", SignUp, name="signup"),
-        Route("/dashboard", Dashboard, name="dashboard"),
+        Route("/dashboard", dashboard, name="dashboard", methods=["POST", "GET"]),
+        Route("/logout", logout, name="logout")
     ],
     middleware=[Middleware(AuthenticationMiddleware, backend=BasicAuthBackend())],
     on_startup=[database.connect],
