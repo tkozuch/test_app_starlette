@@ -1,0 +1,36 @@
+<body onload="addEventListeners();">
+  <form method="post" action="">
+    <label for="login">Login</label>
+    <input type="text" id="login" name="login">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password">
+    <label for="password_conf">Confirm password</label>
+    <input type="password" id="password_conf">
+    <button type="submit" id="register-btn" disabled>Register</button>
+  </form>
+  <a href="{{ url_for('signin') }}">Sign In</a>
+</body>
+
+<script type="text/javascript">
+  function addEventListeners() {
+      let pw = document.getElementById("password");
+      let pwConfirmation = document.getElementById("password_conf");
+
+      pw.addEventListener('input', function (evt) {
+        enableRegisterButton();
+      });
+
+      pwConfirmation.addEventListener('input', function (evt) {
+        enableRegisterButton();
+      });
+
+      function enableRegisterButton() {
+        document.getElementById("register-btn").disabled = false;
+        if (pw.value === pwConfirmation.value && pw.value !== '') {
+          document.getElementById("register-btn").disabled = false;
+        } else {
+          document.getElementById("register-btn").disabled = true;
+        }
+      }
+  }
+</script>

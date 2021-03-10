@@ -1,0 +1,25 @@
+<body onload="addEventListeners();">
+  <h2>Log In</h2>
+  <form method="post" action="">
+    <label for="login">Login</label>
+    <input type="text" id="login" name="login">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password">
+    <button type="submit" id="login-btn" disabled>Login</button>
+  </form>
+  <a href="{{ url_for('signup') }}">Sign Up</a>
+</body>
+<script type="text/javascript">
+  function addEventListeners() {
+      let loginBtn = document.getElementById("login-btn");
+      let username = document.getElementById("login");
+
+      username.addEventListener('input', function(evt) {
+          if(username.value !== '') {
+            loginBtn.disabled = false;
+          } else {
+            loginBtn.disabled = true;
+          }
+      });
+}
+</script>
